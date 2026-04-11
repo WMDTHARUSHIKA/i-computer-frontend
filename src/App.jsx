@@ -7,6 +7,7 @@ import { Toaster } from "react-hot-toast";
 import RegisterPage from "./pages/register";
 import ForgetPassword from "./pages/forgetPassword";
 import { GoogleOAuthProvider } from "@react-oauth/google";
+import PublicLayout from "./layouts/publiclayout";
 
 export default function App() {
     return (
@@ -14,11 +15,12 @@ export default function App() {
             <div className="w-full min-h-screen bg-accent text-primary">
                 <Toaster position="top-right" />
                 <Routes>
-                    <Route path="/*" element={<HomePage />} />
-                    <Route path="/admin/*" element={<AdminPage />} />
-                    <Route path="/login" element={<LoginPage />} />
-                    <Route path="/register" element={<RegisterPage />} />
-                    <Route path="/forgot-password" element={<ForgetPassword />} />
+                    <Route element={<PublicLayout />}>
+                        <Route path="/*" element={<HomePage />} />
+                        <Route path="/login" element={<LoginPage />} />
+                        <Route path="/register" element={<RegisterPage />} />
+                        <Route path="/forgot-password" element={<ForgetPassword />} />
+                    </Route>
                     <Route path="/test" element={<Test />} />
                     <Route path="/admin/*" element={<AdminPage />} />
                 </Routes>

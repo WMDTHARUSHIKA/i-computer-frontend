@@ -1,142 +1,218 @@
-import { useState } from "react";
+// RegisterPage.jsx (modern + uses your brand colors)
+// Brand colors:
+// #000000 (black)
+// #48A111 (green)
+// #F1F0E9 (cream)
+
+import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { useGoogleLogin } from "@react-oauth/google";
 
 export default function RegisterPage() {
-    const [firstName, setFirstName] = useState("");
-    const [lastName, setLastName] = useState("");
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-    const [confirmPassword, setConfirmPassword] = useState("");
-    const navigate = useNavigate();
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
-    const googleLogin = useGoogleLogin({
-        onSuccess: (response) => {
-            axios
-                .post(import.meta.env.VITE_API_URL + "/users/google-login", {
-                    token: response.access_token,
-                })
-                .then((response) => {
-                    toast.success("Login Successful");
-                    localStorage.setItem("token", response.data.token);
+  const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
-                    if (response.data.role === "admin") {
-                        navigate("/admin/");
-                    } else {
-                        navigate("/");
-                    }
-                })
-                .catch((err) => {
-                    toast.error(
-                        err?.response?.data?.message ||
-                            "Google login failed. Please try again."
-                    );
-                });
-        },
-        onError: () => {
-            toast.error("Google login failed. Please try again.");
-        },
-    });
+  const navigate = useNavigate();
+  const API = useMemo(() => import.meta.env.VITE_API_URL, []);
 
-    async function signup() {
-        if (password !== confirmPassword) {
-            toast.error("Passwords do not match");
-            return;
-        }
+  const googleLogin = useGoogleLogin({
+    onSuccess: async (googleRes) => {
+      try {
+        setGoogleLoading(true);
+        const res = await axios.post(API + "/users/google-login", {
+          token: googleRes.access_token,
+        });
 
-        try {
-            await axios.post(import.meta.env.VITE_API_URL + "/users/", {
-                firstName,
-                lastName,
-                email,
-                password,
-            });
+        localStorage.setItem("token", res.data.token);
+        toast.success("Login successful");
 
-            toast.success("Signed up Successfully");
-            navigate("/login");
-        } catch (err) {
-            toast.error(err?.response?.data?.message || "Failed to sign up");
-        }
+        if (res.data.role === "admin") navigate("/admin/");
+        else navigate("/");
+      } catch (err) {
+        toast.error(err?.response?.data?.message || "Google sign up failed. Please try again.");
+      } finally {
+        setGoogleLoading(false);
+      }
+    },
+    onError: () => toast.error("Google sign up failed. Please try again."),
+  });
+
+  async function signup(e) {
+    e?.preventDefault();
+
+    const fn = firstName.trim();
+    const ln = lastName.trim();
+    const em = email.trim().toLowerCase();
+
+    if (!fn) return toast.error("First name is required");
+    if (!ln) return toast.error("Last name is required");
+    if (!em) return toast.error("Email is required");
+    if (!password) return toast.error("Password is required");
+    if (password.length < 6) return toast.error("Password must be at least 6 characters");
+    if (password !== confirmPassword) return toast.error("Passwords do not match");
+
+    try {
+      setLoading(true);
+
+      await axios.post(API + "/users/", {
+        firstName: fn,
+        lastName: ln,
+        email: em,
+        password,
+      });
+
+      toast.success("Account created successfully");
+      navigate("/login");
+    } catch (err) {
+      toast.error(err?.response?.data?.message || "Failed to sign up");
+    } finally {
+      setLoading(false);
     }
+  }
 
-    const inputClass =
-        "p-3 w-full h-[52px] rounded-2xl border border-white/20 bg-white/10 text-white placeholder:text-white/60 outline-none focus:ring-2 focus:ring-accent transition";
+  const input =
+    "w-full h-[52px] rounded-2xl border border-black/15 bg-white px-4 text-black placeholder:text-black/40 outline-none transition focus:ring-2 focus:ring-[#48A111]/30 focus:border-black/25";
 
-    return (
-        <div className="w-full min-h-screen bg-[url('/background.jpg')] bg-cover bg-center flex">
-            <div className="w-[50%] h-full hidden lg:flex justify-center items-center flex-col">
-                <img src="/logo.png" alt="Logo" className="w-[300px]" />
-                <h1 className="text-4xl font-bold mt-5 text-white">Isuri Computers</h1>
-            </div>
+  const primaryBtn =
+    "h-[52px] w-full rounded-2xl bg-[#48A111] text-black font-black hover:bg-[#3D8F0F] transition disabled:opacity-60 disabled:cursor-not-allowed";
 
-            <div className="w-full lg:w-[50%] min-h-screen flex justify-center items-center px-4">
-                <div className="backdrop-blur-2xl bg-white/10 border border-white/20 w-full max-w-[460px] rounded-3xl shadow-2xl flex flex-col justify-center p-8">
-                    <h1 className="text-3xl font-black text-white text-center mb-6">
-                        Create Account
-                    </h1>
+  const ghostBtn =
+    "h-[52px] w-full rounded-2xl border border-black/15 bg-[#F1F0E9] text-black font-black hover:bg-white transition disabled:opacity-60 disabled:cursor-not-allowed";
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <input
-                            value={firstName}
-                            onChange={(e) => setFirstName(e.target.value)}
-                            className={inputClass}
-                            type="text"
-                            placeholder="First Name"
-                        />
-                        <input
-                            value={lastName}
-                            onChange={(e) => setLastName(e.target.value)}
-                            className={inputClass}
-                            type="text"
-                            placeholder="Last Name"
-                        />
-                    </div>
-
-                    <div className="flex flex-col gap-4 mt-4">
-                        <input
-                            type="email"
-                            placeholder="Email"
-                            onChange={(e) => setEmail(e.target.value)}
-                            className={inputClass}
-                        />
-                        <input
-                            type="password"
-                            placeholder="Password"
-                            className={inputClass}
-                            onChange={(e) => setPassword(e.target.value)}
-                        />
-                        <input
-                            type="password"
-                            placeholder="Confirm Password"
-                            className={inputClass}
-                            onChange={(e) => setConfirmPassword(e.target.value)}
-                        />
-                    </div>
-
-                    <button
-                        onClick={signup}
-                        className="mt-5 p-3 w-full h-[52px] bg-secondary rounded-2xl text-white font-bold hover:opacity-90 transition"
-                    >
-                        Sign up
-                    </button>
-
-                    <button
-                        onClick={googleLogin}
-                        className="mt-4 p-3 w-full h-[52px] border border-white/30 rounded-2xl text-white font-bold hover:bg-white/10 transition"
-                    >
-                        Sign up with Google
-                    </button>
-
-                    <p className="w-full text-right mt-5 text-white/80">
-                        Already have an account?{" "}
-                        <Link to="/login" className="text-accent font-semibold">
-                            Login
-                        </Link>
-                    </p>
+  return (
+    <main className="min-h-screen bg-[#F1F0E9]">
+      <div className="mx-auto flex min-h-screen max-w-7xl items-center justify-center px-4 py-12">
+        <section className="w-full max-w-[980px] overflow-hidden rounded-3xl border border-black/10 bg-white shadow-[0_20px_70px_rgba(0,0,0,0.12)]">
+          <div className="grid grid-cols-1 lg:grid-cols-2">
+            {/* Left brand panel */}
+            <div className="hidden lg:flex flex-col justify-between p-10 bg-black text-[#F1F0E9]">
+              <div>
+                <div className="flex items-center gap-3">
+                  <div className="h-12 w-12 rounded-2xl bg-white/10 flex items-center justify-center">
+                    <img src="/logo.png" alt="Logo" className="h-8 w-8 object-contain" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-[#F1F0E9]/70">Welcome to</p>
+                    <h1 className="text-2xl font-black tracking-tight">Isuri Computers</h1>
+                  </div>
                 </div>
+
+                <h2 className="mt-10 text-4xl font-black leading-tight">
+                  Create your account
+                </h2>
+                <p className="mt-4 text-[#F1F0E9]/75 leading-relaxed">
+                  Register to shop faster, track orders and manage your profile.
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-white/15 bg-white/5 p-5 text-sm text-[#F1F0E9]/75">
+                Tip: Use Google to sign up quickly.
+              </div>
             </div>
-        </div>
-    );
+
+            {/* Right form */}
+            <div className="p-8 sm:p-10">
+              <div className="lg:hidden flex items-center gap-3">
+                <img src="/logo.png" alt="Logo" className="h-10 w-10 object-contain" />
+                <div>
+                  <p className="text-xs text-black/60">Isuri Computers</p>
+                  <h1 className="text-xl font-black">Create Account</h1>
+                </div>
+              </div>
+
+              <div className="mt-6 lg:mt-0">
+                <h2 className="text-3xl font-black text-black tracking-tight">Create account</h2>
+                <p className="mt-2 text-black/60">Fill your details to get started.</p>
+              </div>
+
+              <form onSubmit={signup} className="mt-8 space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <input
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    className={input}
+                    type="text"
+                    placeholder="First name"
+                    autoComplete="given-name"
+                  />
+                  <input
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    className={input}
+                    type="text"
+                    placeholder="Last name"
+                    autoComplete="family-name"
+                  />
+                </div>
+
+                <input
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  type="email"
+                  placeholder="Email"
+                  className={input}
+                  autoComplete="email"
+                />
+
+                <input
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  type="password"
+                  placeholder="Password (min 6 chars)"
+                  className={input}
+                  autoComplete="new-password"
+                />
+
+                <input
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  type="password"
+                  placeholder="Confirm password"
+                  className={input}
+                  autoComplete="new-password"
+                />
+
+                <button type="submit" disabled={loading} className={primaryBtn}>
+                  {loading ? "Creating..." : "Sign up"}
+                </button>
+
+                <div className="relative py-1">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-black/10" />
+                  </div>
+                  <div className="relative flex justify-center">
+                    <span className="bg-white px-3 text-xs text-black/40">OR</span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => googleLogin()}
+                  disabled={googleLoading}
+                  className={ghostBtn}
+                >
+                  {googleLoading ? "Connecting..." : "Sign up with Google"}
+                </button>
+
+                <p className="text-right text-sm text-black/60 pt-2">
+                  Already have an account?{" "}
+                  <Link to="/login" className="font-black text-[#48A111] hover:underline">
+                    Login
+                  </Link>
+                </p>
+              </form>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  );
 }
